@@ -1,1 +1,106 @@
-<h1>Hello World!</h1>
+<html>
+<head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ajv/8.12.0/ajv7.min.js"></script>
+  <style>
+    textarea {
+      width: 400px;
+      height: 200px;
+    }
+    select {
+      width: 400px;
+    }
+    button {
+      width: 100px;
+    }
+    .valid {
+      color: green;
+    }
+    .invalid {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <form>
+      <label for="json">JSON-Objekt</label>
+      <textarea id="json" name="json" required></textarea>
+      <label for="yaml">OpenAPI-Spezifikation (YAML)</label>
+      <textarea id="yaml" name="yaml" required></textarea>
+      <label for="schema">Schema auswählen</label>
+      <select id="schema" name="schema" required></select>
+      <button id="validate" type="button">Validieren</button>
+      <p id="result"></p>
+    </form>
+  </div>
+  <script>
+    // Funktion, um die Schemas aus der YAML-Datei zu extrahieren
+    function getSchemas(yaml) {
+      var schemas = [];
+      try {
+        var data = jsyaml.load(yaml);
+        if (data.components && data.components.schemas) {
+          for (var key in data.components.schemas) {
+            schemas.push(key);
+          }
+        }
+      } catch (error) {
+        console.error(error);
+      }
+      return schemas;
+    }
+
+    // Funktion, um das JSON-Objekt gegen das ausgewählte Schema zu validieren
+    function validateJson(json, yaml, schema) {
+      var result = "";
+      try {
+        var data = jsyaml.load(yaml);
+        var ajv = new Ajv();
+        var validate = ajv.compile(data.components.schemas[schema]);
+        var valid = validate(JSON.parse(json));
+        if (valid) {
+          result = "Das JSON-Objekt ist gültig nach dem Schema " + schema + ".";
+          result = "<span class='valid'>" + result + "</span>";
+        } else {
+          result = "Das JSON-Objekt ist ungültig nach dem Schema " + schema + ". Fehler: " + JSON.stringify(validate.errors);
+          result = "<span class='invalid'>" + result + "</span>";
+        }
+      } catch (error) {
+        console.error(error);
+        result = "Es ist ein Fehler aufgetreten: " + error.message;
+        result = "<span class='invalid'>" + result + "</span>";
+      }
+      return result;
+    }
+
+    // Elemente aus dem DOM auswählen
+    var json = document.getElementById("json");
+    var yaml = document.getElementById("yaml");
+    var schema = document.getElementById("schema");
+    var validate = document.getElementById("validate");
+    var result = document.getElementById("result");
+
+    // Event-Listener hinzufügen
+    yaml.addEventListener("input", function() {
+      // Die Schemas aus der YAML-Datei holen
+      var schemas = getSchemas(yaml.value);
+      // Die Optionen im Select-Element aktualisieren
+      schema.innerHTML = "";
+      for (var i = 0; i < schemas.length; i++) {
+        var option = document.createElement("option");
+        option.value = schemas[i];
+        option.text = schemas[i];
+        schema.appendChild(option);
+      }
+    });
+
+    validate.addEventListener("click", function() {
+      // Das JSON-Objekt gegen das ausgewählte Schema validieren
+      var output = validateJson(json.value, yaml.value, schema.value);
+      // Das Ergebnis anzeigen
+      result.innerHTML = output;
+    });
+  </script>
+</body>
+</html>
